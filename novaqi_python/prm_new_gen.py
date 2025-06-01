@@ -92,10 +92,15 @@ def plot_road_map(road_map, sample_x, sample_y):  # pragma: no cover
                      [sample_y[i], sample_y[ind]], "-k")
 
 def sample_points(sx, sy, gx, gy, rr, ox, oy, obstacle_kd_tree, rng):
-    max_x = max(ox) 
-    max_y = max(oy) 
-    min_x = min(ox) 
-    min_y = min(oy) 
+    # max_x = max(ox) 
+    # max_y = max(oy) 
+    # min_x = min(ox) 
+    # min_y = min(oy) 
+
+    max_x = 40.0
+    max_y = 40.0 
+    min_x = 0.0 
+    min_y = 0.0 
 
     sample_x, sample_y = [], []
 
@@ -154,6 +159,7 @@ def plot_surface(x, y, z):
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
+
     plt.show()
 
 def main(rng=None):
@@ -167,7 +173,8 @@ def main(rng=None):
         loaded_matrix = [list(map(float, row)) for row in reader]
 
     occupancy_grid = np.array(loaded_matrix)
-    
+    # occupancy_grid = np.zeros((40,40))
+
     print(occupancy_grid)
 
     resolution = 1.0  # Adjust this based on your grid's resolution (meters per cell)

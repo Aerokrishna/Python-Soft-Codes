@@ -149,7 +149,7 @@ def main(rng=None):
     print("Starting script...")
     script_start_time = time.time()
 
-    matrix_path = "/home/krishnapranav/novaqi_python/real_map4_Ogrid.csv"
+    matrix_path = "real_map4_Ogrid.csv"
 
     with open(matrix_path, 'r') as f:
         reader = csv.reader(f)
