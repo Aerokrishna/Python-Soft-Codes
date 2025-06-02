@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,12 +6,13 @@ from scipy.spatial import KDTree
 import csv
 import time
 import os
+from collections import defaultdict
 
 # Parameters
 N_SAMPLE = 1000  # number of sample_points
 N_KNN = 5  # number of edges from one sampled point
 MAX_EDGE_LEN = 5.0  # [m] Maximum edge length
-show_animation = True
+show_animation = False
 np.set_printoptions(threshold=np.inf)
 
 def is_collision(sx, sy, gx, gy, rr, obstacle_kd_tree):
@@ -40,18 +42,14 @@ def is_collision(sx, sy, gx, gy, rr, obstacle_kd_tree):
         return True  # collision
 
     return False  # OK
+def add_edge(graph, u, v):
+    graph[u].append(v)
+    graph[v].append(u)
 
 def generate_road_map(sample_x, sample_y, rr, obstacle_kd_tree):
-    """
-    Road map generation
-
-    sample_x: [m] x positions of sampled points
-    sample_y: [m] y positions of sampled points
-    robot_radius: Robot Radius[m]
-    obstacle_kd_tree: KDTree object of obstacles
-    """
-
-    road_map = []
+    road_map = defaultdict(list)
+    
+    # road_map = []
     n_sample = len(sample_x)
     sample_kd_tree = KDTree(np.vstack((sample_x, sample_y)).T)
 
@@ -64,43 +62,50 @@ def generate_road_map(sample_x, sample_y, rr, obstacle_kd_tree):
             print(f"Processed {i}/{n_sample} samples, elapsed time: {elapsed_time:.2f} seconds")
 
         dists, indexes = sample_kd_tree.query([ix, iy], k=n_sample)
-        edge_id = []
+        edges = []
 
-        for ii in range(1, len(indexes)):
-            nx = sample_x[indexes[ii]]
-            ny = sample_y[indexes[ii]]
+        for ii, neighbors in enumerate(indexes):
+            if ii:
+                nx = sample_x[indexes[ii]]
+                ny = sample_y[indexes[ii]]
 
-            if not is_collision(ix, iy, nx, ny, rr, obstacle_kd_tree):
-                edge_id.append(indexes[ii])
+                if not is_collision(ix, iy, nx, ny, rr, obstacle_kd_tree):
+                    add_edge(graph=road_map, u=i, v=neighbors)
 
-            if len(edge_id) >= N_KNN:
-                break
+                if len(road_map[i]) >= N_KNN:
+                    print("parent  ", i, "children   ", road_map[i])
 
-        road_map.append(edge_id)
+                    break
+        
+        # road_map[i] = edges
 
     total_time = time.time() - start_time
     print(f"Completed road map generation in {total_time:.2f} seconds")
 
     return road_map
 
-def plot_road_map(road_map, sample_x, sample_y):  # pragma: no cover
-    for i, _ in enumerate(road_map):
-        for ii in range(len(road_map[i])):
-            ind = road_map[i][ii]
 
-            plt.plot([sample_x[i], sample_x[ind]],
-                     [sample_y[i], sample_y[ind]], "-k")
+def plot_road_map(road_map, sample_x, sample_y):  # pragma: no cover
+    visited = set()
+
+    for i in road_map:
+        for j in road_map[i]:
+            if (j, i) in visited:  # avoid plotting the same undirected edge twice
+                continue
+            plt.plot([sample_x[i], sample_x[j]],
+                     [sample_y[i], sample_y[j]], "-k")
+            visited.add((i, j))
 
 def sample_points(sx, sy, gx, gy, rr, ox, oy, obstacle_kd_tree, rng):
-    # max_x = max(ox) 
-    # max_y = max(oy) 
-    # min_x = min(ox) 
-    # min_y = min(oy) 
+    max_x = max(ox) 
+    max_y = max(oy) 
+    min_x = min(ox) 
+    min_y = min(oy) 
 
-    max_x = 40.0
-    max_y = 40.0 
-    min_x = 0.0 
-    min_y = 0.0 
+    # max_x = 40.0
+    # max_y = 40.0 
+    # min_x = 0.0 
+    # min_y = 0.0 
 
     sample_x, sample_y = [], []
 
@@ -221,36 +226,37 @@ def main(rng=None):
 
         plt.show()
 
-    for i in range(500):
-        if len(road_map[i]) < 4:
-            print("SCENE HOGAYA")
-            print(len(road_map[i]))
-    
     alpha = 0.3
     gamma = 0.95
     epsilon = 0.1
     num_episodes = 10000
     num_states = len(sample_x)
-    num_actions = N_KNN
+    # num_actions = N_KNN
 
     sample_set = list(range(num_states))
-    Q_table = np.zeros((num_states, num_actions), dtype=np.float64)
+
+    Q_table = defaultdict(list)
+
+    for i in road_map:
+        degree = len(road_map[i])
+        Q_table[i] = [0] * degree
 
     goal_state = len(sample_x) - 1
    
-    
     for episode in range(num_episodes):
         print("episode : ", episode)
         current_state = np.random.choice(sample_set)
         cnt = 0
+        
         while True:
             if np.random.rand() < epsilon:
                 action_id = np.random.choice(range(len(road_map[current_state])))
                 action = road_map[current_state][action_id]
             else:
+                # print(current_state, Q_table[current_state])
                 action_id = np.argmax(Q_table[current_state])
-                if action_id >= len(road_map[current_state]):
-                    break
+                # if action_id >= len(road_map[current_state]):
+                #     break
                 action = road_map[current_state][action_id]
 
             next_state = action
@@ -277,7 +283,7 @@ def main(rng=None):
     #                 writer.writerow(row)
     
     #print(gridMap_optimalQ_values)
-    plot_surface(sample_x, sample_y, gridMap_optimalQ_values)
+    # plot_surface(sample_x, sample_y, gridMap_optimalQ_values)
     
     total_script_time = time.time() - script_start_time
     print(f"Script completed in {total_script_time:.2f} seconds")
