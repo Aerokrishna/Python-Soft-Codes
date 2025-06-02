@@ -3,46 +3,43 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 
-animate = False
-move = True
+animate = False # to show static visal
+move = True # to show moving visual
+
 # Simulation parameters
-N = 5          # prediction horizon
+N = 5          # number of time steps mpc will be predicting
 dt = 0.1        # time step
 num_bots = 4
 
 # Cost function weights
-Q = np.diag([20.0, 20.0])  # penalize x, y, theta errors
-R = np.diag([2.0, 2.0])         
-W_dir = 0.0
-W_collision= 0.1
+Q = np.diag([20.0, 20.0])  # weight for ref trajectory errors
+R = np.diag([2.0, 2.0])   # weight for lower velocity 
+W_dir = 0.1 # weight for sudden direction change 
+W_collision= 0.1 # weight for inter bot collision
 
-# initial_poses = np.array([[1.0, 1.0], [3.0, 2.0], [1.0, 3.0]])
-# final_poses = np.array([[3.0, 3.0], [1.0, 2.0], [3.0, 1.0]]) # final pose after 10 iterations
-
+# initialize random pose
 initial_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
 final_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
 
-# Reference trajectory (straight line along x-axis)
+# Reference trajectory init
 x_ref = np.zeros((num_bots, N))
 y_ref = np.zeros((num_bots, N))
 ref_traj = np.zeros((num_bots,N, 2))
 
-v_min, v_max = -0.2, 0.2     # min and max linear velocity in x and y
+# bound velocity
+v_min, v_max = -0.2, 0.2     
 bounds = []
 
-for _ in range(num_bots):
+# generate ref trajectory
+for bot in range(num_bots):
+    x_ref[bot] = np.linspace(initial_poses[bot][0], final_poses[bot][0], N)
+    y_ref[bot] = np.linspace(initial_poses[bot][1], final_poses[bot][1], N)
+    ref_traj[bot] = np.stack([x_ref[bot], y_ref[bot]], axis=1)
     for _ in range(N):
         bounds.append((v_min, v_max))        # vx
         bounds.append((v_min, v_max))        # vy
 
-for bot in range(num_bots):
-    x_ref[bot] = np.linspace(initial_poses[bot][0], final_poses[bot][0], N)
-    y_ref[bot] = np.linspace(initial_poses[bot][1], final_poses[bot][1], N)
-    ref_traj[bot] = np.stack([x_ref[bot], y_ref[bot]], axis=1) 
-
-    # print(ref_traj[bot])
-
-# Differential drive motion model
+# Holonomic drive motion model
 def holonomoic_drive_model(x, u):
     x_new = np.zeros_like(x)
     vx, vy = u
@@ -51,11 +48,12 @@ def holonomoic_drive_model(x, u):
     # x_new[2] = x[2] + omega * dt
     return x_new
 
+# objective function
 def objective(U_flat):
     U = U_flat.reshape(num_bots, N, 2)  # [vx, vy]
     cost = 0.0
 
-    # Store simulated states for each robot over the horizon
+    # simulated states for each robot over the each predicted time steps
     x_all = [initial_poses[bot].copy() for bot in range(num_bots)]
     prev_theta = [np.arctan2(U[bot][0][1], U[bot][0][0]) for bot in range(num_bots)]
 
@@ -65,13 +63,13 @@ def objective(U_flat):
             x = holonomoic_drive_model(x_all[bot], U[bot][t])
 
             x_all[bot] = x
-            # 1. Tracking error
+            # Ref trajectory error
             x_err = x - ref_traj[bot][t]
 
-            # 2. Control effort
+            # control effort
             u_err = U[bot][t]
 
-            # 3. Direction smoothness
+            # direction smoothness
             vx, vy = U[bot][t][0], U[bot][t][1]
             theta = np.arctan2(vy, vx)
             dir_error = (theta - prev_theta[bot])**2
@@ -80,18 +78,16 @@ def objective(U_flat):
             # Accumulate cost
             cost += x_err.T @ Q @ x_err + u_err.T @ R @ u_err + W_dir * dir_error
 
-        # 4. Inter-robot collision avoidance cost
+        # inter robot collision avoidance cost
         for i in range(num_bots):
             for j in range(i + 1, num_bots):
                 xi = x_all[i]
                 xj = x_all[j]
                 dist = np.linalg.norm(xi - xj)
-                # print("dist  ", W_collision / (dist**2 + 1e-3))
-                # print("cost  ", cost)
-                # cost += W_collision / (dist**2 + 1e-3)  # Add epsilon to avoid div by zero
+            
                 thres = 0.5
                 if dist < thres :
-                    cost += W_collision / (dist**2 + 1e-3)  # Add epsilon to avoid div by zero
+                    cost += W_collision / (dist**2 + 1e-3)  
 
                     # cost = W_collision * np.exp(-1.0 * dist**2)
 
@@ -111,7 +107,7 @@ U_opt = result.x.reshape(num_bots, N, 2)
 # print("bot 1 control : ", U_opt[0][0], "bot 2 control : ", U_opt[1][0], "bot 3 control : ", U_opt[2][0], "bot 4 control : ", U_opt[3][0])
 
 if move:
-    plt.ion()  # turn on interactive mode
+    plt.ion()  
     while True:
         x_all = [initial_poses[bot].copy() for bot in range(num_bots)]
         trajectory = [[] for _ in range(num_bots)]
@@ -126,7 +122,6 @@ if move:
 
         trajectory = [np.array(traj) for traj in trajectory]
 
-        # Plot
         plt.clf()
         colors = ['b', 'r', 'm', 'c', 'orange', 'purple']
         for bot in range(num_bots):
@@ -141,9 +136,8 @@ if move:
         plt.axis('equal')
         plt.grid(True)
         plt.legend()
-        plt.pause(0.1)  # Non-blocking plot
+        plt.pause(0.1)  
 
-        # Apply first control input to move each robot
         for bot in range(num_bots):
             if np.linalg.norm(initial_poses[bot] - final_poses[bot]) > 0.05:
                 initial_poses[bot] = holonomoic_drive_model(initial_poses[bot], U_opt[bot, 0])
@@ -151,7 +145,6 @@ if move:
             y_ref[bot] = np.linspace(initial_poses[bot][1], final_poses[bot][1], N)
             ref_traj[bot] = np.stack([x_ref[bot], y_ref[bot]], axis=1) 
 
-        # Replan for next step
         # print("initial pose  ", initial_poses)
         result = minimize(objective, U_opt.flatten(), method='SLSQP', bounds=bounds)
         U_opt = result.x.reshape(num_bots, N, 2)
@@ -187,7 +180,7 @@ if animate:
     plt.axis('equal')
     plt.grid(True)
     plt.legend()
-    plt.show()  # Non-blocking plot
+    plt.show()  
     
     
     
