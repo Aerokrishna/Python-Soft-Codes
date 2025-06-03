@@ -7,19 +7,28 @@ animate = False # to show static visal
 move = True # to show moving visual
 
 # Simulation parameters
-N = 5          # number of time steps mpc will be predicting
+N = 2   # number of time steps mpc will be predicting
 dt = 0.1        # time step
-num_bots = 4
+num_bots = 1
 
 # Cost function weights
 Q = np.diag([20.0, 20.0])  # weight for ref trajectory errors
 R = np.diag([2.0, 2.0])   # weight for lower velocity 
 W_dir = 0.1 # weight for sudden direction change 
 W_collision= 0.1 # weight for inter bot collision
+W_obstacle = 2.0
+# # initialize random pose
+# initial_poses = np.random.uniform(1.0, 2.0, size=(num_bots, 2))
+# final_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
 
-# initialize random pose
-initial_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
-final_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
+# initial_poses = np.array(([1.0, 2.0]))
+# final_poses = np.array(([4.0,4.0]))
+
+# # initialize random pose
+initial_poses = np.array(([1.0, 2.0],[2.0, 2.0],[0.0, 2.0],[3.0, 2.0]))
+final_poses = np.array(([4.0,1.0],[0.0, 1.0],[3.0, 0.0],[2.0,2.0]))
+obs_x = np.array([2]*10)
+obs_y = np.linspace(0.0, 2.0, 10)
 
 # Reference trajectory init
 x_ref = np.zeros((num_bots, N))
@@ -27,7 +36,7 @@ y_ref = np.zeros((num_bots, N))
 ref_traj = np.zeros((num_bots,N, 2))
 
 # bound velocity
-v_min, v_max = -0.2, 0.2     
+v_min, v_max = -0.05, 0.05     
 bounds = []
 
 # generate ref trajectory
@@ -52,6 +61,7 @@ def holonomoic_drive_model(x, u):
 def objective(U_flat):
     U = U_flat.reshape(num_bots, N, 2)  # [vx, vy]
     cost = 0.0
+    thres = 0.5
 
     # simulated states for each robot over the each predicted time steps
     x_all = [initial_poses[bot].copy() for bot in range(num_bots)]
@@ -85,11 +95,16 @@ def objective(U_flat):
                 xj = x_all[j]
                 dist = np.linalg.norm(xi - xj)
             
-                thres = 0.5
                 if dist < thres :
-                    cost += W_collision / (dist**2 + 1e-3)  
+                    cost += W_collision / (dist**2 + 1e-3)
 
-                    # cost = W_collision * np.exp(-1.0 * dist**2)
+        # inter robot collision avoidance cost
+        for bot in range(num_bots):
+            for obs in range(len(obs_x)):
+                xi = x_all[i]
+                obsdist = np.linalg.norm(xi - [obs_x[obs], obs_y[obs]])
+                if obsdist < thres:
+                    cost += W_obstacle / (obsdist + 1e-3)
 
     return cost
 
@@ -136,6 +151,7 @@ if move:
         plt.axis('equal')
         plt.grid(True)
         plt.legend()
+        plt.scatter(obs_x, obs_y, c='k', s=100, marker='o', label='Obstacles')  
         plt.pause(0.1)  
 
         for bot in range(num_bots):
@@ -180,6 +196,7 @@ if animate:
     plt.axis('equal')
     plt.grid(True)
     plt.legend()
+    plt.scatter(obs_x, obs_y, c='k', s=100, marker='o', label='Obstacles')
     plt.show()  
     
     

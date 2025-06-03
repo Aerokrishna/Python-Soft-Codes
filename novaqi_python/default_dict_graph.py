@@ -1,20 +1,20 @@
 from collections import defaultdict
 
 # Create the graph as an adjacency list
-graph = defaultdict(set)
+graph = defaultdict(list)
 
 # Function to add an undirected edge
 def add_edge(u, v):
-    graph[u].add(v)
-    graph[v].add(u)
+    graph[u].append(v)
+    graph[v].append(u)
 
 # Function to remove a node and all its edges
 def remove_node(node):
     if node not in graph:
         return
     
-    for neighbor in list(graph[node]):
-        print(graph[node])
+    for neighbor in graph[node]:
+        # print(graph[node])
         graph[neighbor].remove(node)
     del graph[node]
 
@@ -42,6 +42,11 @@ for i in graph:
 
 print(graph)
 print(graph2)
+
+remove_node(2)
+
+print(graph)
+
 # print(graph.items())
 
 # # # Remove node 4
