@@ -229,7 +229,7 @@ def main(rng=None):
     alpha = 0.3
     gamma = 0.95
     epsilon = 0.1
-    num_episodes = 10000
+    num_episodes = 1200
     num_states = len(sample_x)
     # num_actions = N_KNN
 
@@ -283,7 +283,7 @@ def main(rng=None):
     #                 writer.writerow(row)
     
     #print(gridMap_optimalQ_values)
-    # plot_surface(sample_x, sample_y, gridMap_optimalQ_values)
+    plot_surface(sample_x, sample_y, gridMap_optimalQ_values)
     
     total_script_time = time.time() - script_start_time
     print(f"Script completed in {total_script_time:.2f} seconds")

@@ -9,14 +9,14 @@ move = True # to show moving visual
 # Simulation parameters
 N = 2   # number of time steps mpc will be predicting
 dt = 0.1        # time step
-num_bots = 1
+num_bots = 4
 
 # Cost function weights
 Q = np.diag([20.0, 20.0])  # weight for ref trajectory errors
 R = np.diag([2.0, 2.0])   # weight for lower velocity 
 W_dir = 0.1 # weight for sudden direction change 
-W_collision= 0.1 # weight for inter bot collision
-W_obstacle = 2.0
+W_collision= 1.0 # weight for inter bot collision
+W_obstacle = 0.5
 # # initialize random pose
 # initial_poses = np.random.uniform(1.0, 2.0, size=(num_bots, 2))
 # final_poses = np.random.uniform(0.5, 3.0, size=(num_bots, 2))
@@ -28,7 +28,7 @@ W_obstacle = 2.0
 initial_poses = np.array(([1.0, 2.0],[2.0, 2.0],[0.0, 2.0],[3.0, 2.0]))
 final_poses = np.array(([4.0,1.0],[0.0, 1.0],[3.0, 0.0],[2.0,2.0]))
 obs_x = np.array([2]*10)
-obs_y = np.linspace(0.0, 2.0, 10)
+obs_y = np.linspace(0.0, 1.0, 10)
 
 # Reference trajectory init
 x_ref = np.zeros((num_bots, N))
@@ -36,7 +36,7 @@ y_ref = np.zeros((num_bots, N))
 ref_traj = np.zeros((num_bots,N, 2))
 
 # bound velocity
-v_min, v_max = -0.05, 0.05     
+v_min, v_max = -0.2, 0.2     
 bounds = []
 
 # generate ref trajectory
@@ -75,7 +75,6 @@ def objective(U_flat):
             x_all[bot] = x
             # Ref trajectory error
             x_err = x - ref_traj[bot][t]
-
             # control effort
             u_err = U[bot][t]
 
@@ -101,7 +100,7 @@ def objective(U_flat):
         # inter robot collision avoidance cost
         for bot in range(num_bots):
             for obs in range(len(obs_x)):
-                xi = x_all[i]
+                xi = x_all[bot]
                 obsdist = np.linalg.norm(xi - [obs_x[obs], obs_y[obs]])
                 if obsdist < thres:
                     cost += W_obstacle / (obsdist + 1e-3)
