@@ -9,10 +9,10 @@ import os
 from collections import defaultdict
 
 # Parameters
-N_SAMPLE = 1000  # number of sample_points
+N_SAMPLE = 2000  # number of sample_points
 N_KNN = 5  # number of edges from one sampled point
 MAX_EDGE_LEN = 5.0  # [m] Maximum edge length
-show_animation = False
+show_animation = True
 np.set_printoptions(threshold=np.inf)
 
 def is_collision(sx, sy, gx, gy, rr, obstacle_kd_tree):
@@ -229,17 +229,21 @@ def main(rng=None):
     alpha = 0.3
     gamma = 0.95
     epsilon = 0.1
-    num_episodes = 1200
+    num_episodes = 50000
     num_states = len(sample_x)
     # num_actions = N_KNN
 
     sample_set = list(range(num_states))
 
     Q_table = defaultdict(list)
+    
 
     for i in road_map:
         degree = len(road_map[i])
         Q_table[i] = [0] * degree
+    gridMap_optimalQ_values = [max(Q_table[i]) for i in range(num_states)]
+    plot_surface(sample_x, sample_y, gridMap_optimalQ_values)
+
 
     goal_state = len(sample_x) - 1
    

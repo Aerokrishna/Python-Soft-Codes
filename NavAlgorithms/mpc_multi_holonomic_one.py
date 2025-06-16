@@ -7,7 +7,7 @@ animate = False
 move = True
 
 # Parameters
-dt = 0.3
+dt = 0.1
 num_bots = 4
 
 # Cost weights

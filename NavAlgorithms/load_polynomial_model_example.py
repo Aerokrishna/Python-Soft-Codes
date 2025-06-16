@@ -8,8 +8,8 @@ with open("polynomial_model.pkl", "rb") as f:
 # Example: Prepare input data (replace with your own data)
 # Here, we use a DataFrame with columns 'vx_input' and 'vy_input'
 example_data = pd.DataFrame({
-    'vx_input': [450, 412, 500],
-    'vy_input': [0, 0, 33]
+    'vx_input': [500, 500, 500],
+    'vy_input': [0, 0, 233]
 })
 
 # Predict using the loaded model

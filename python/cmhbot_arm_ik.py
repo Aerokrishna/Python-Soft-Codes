@@ -6,7 +6,7 @@ link1 = 5.21
 link2 = 6.31
 
 # Target goal position
-goal_pose = [7.0, 0.0]  # Change this to any reachable point
+goal_pose = [8.0, -1.5]  # Change this to any reachable point
 x, y = goal_pose
 
 # Compute inverse kinematics
