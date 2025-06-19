@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 heading_dir = "CW"
-numboxes = 12
+numboxes = 25
 
 # Generate random box and robot positions
 boxes_x = np.random.uniform(10, 470, (numboxes,)).astype(int)
@@ -80,14 +80,14 @@ def create_tower(stack):
     offset_x = 30
     offset_y = 30
 
-    layer_1_dis = 20
+    layer_1_dis = 10
     layer_2_dis = 30
 
-    layer1 = [np.array([sx - offset_x, sy]),
-              np.array([sx, sy]),
-              np.array([sx + offset_x, sy])]
-    layer2 = [np.array([sx - offset_x / 2, sy]),
-              np.array([sx + offset_x / 2, sy])]
+    layer1 = [np.array([sx - offset_x, sy - layer_1_dis]),
+              np.array([sx, sy + layer_1_dis]),
+              np.array([sx + offset_x, sy - layer_1_dis])]
+    layer2 = [np.array([sx - offset_x / 2, sy + layer_2_dis]),
+              np.array([sx + offset_x / 2, sy - layer_2_dis])]
     layer3 = [np.array([sx, sy - 2 * offset_y])]
 
     return [layer1, layer2, layer3]
@@ -103,43 +103,36 @@ def select_best_spot(bot, spots, box):
     return best_spot
 
 def assign_tower_spots(optimal_boxes, stack):
-    side_a = [entry for entry in optimal_boxes if entry[1][1] < stack[1]]
-    side_b = [entry for entry in optimal_boxes if entry[1][1] >= stack[1]]
-
-    boxes = [box for box in optimal_boxes]
-
     tower_layers = create_tower(stack)
     assignments = []
     used_spots = []
+    used_boxes = []
 
-    turn = 0  # Start with side A
+    # Make a working copy
+    boxes = optimal_boxes.copy()
 
     for layer in tower_layers:
         remaining_spots = layer.copy()
-        while remaining_spots:
-            if not boxes:
-                break
-            bot, box = boxes.pop(0)
-            # if turn % 2 == 0 and side_a:
-            #     bot, box = side_a.pop(0)
-            # elif side_b:
-            #     bot, box = side_b.pop(0)
-            # else:
-            #     break
+        while remaining_spots and boxes:
+            best_assignment = None
+            min_dist = float('inf')
 
-            available = [s for s in remaining_spots if tuple(s) not in [tuple(u) for u in used_spots]]
-            if not available:
-                break
+            for spot in remaining_spots:
+                for i, (bot, box) in enumerate(boxes):
+                    dist = compute_distance(spot[0], box[0], spot[1], box[1])
+                    if dist < min_dist:
+                        min_dist = dist
+                        best_assignment = (i, bot, box, spot)
 
-            best_spot = select_best_spot(bot, available, box)
-            assignments.append((bot, box, best_spot))
-            used_spots.append(best_spot)
-            # Remove best_spot using np.array_equal to avoid ValueError
-            remaining_spots = [s for s in remaining_spots if not np.array_equal(s, best_spot)]
-
-            turn += 1
+            if best_assignment:
+                idx, bot, box, best_spot = best_assignment
+                assignments.append((bot, box, best_spot))
+                used_spots.append(best_spot)
+                remaining_spots = [s for s in remaining_spots if not np.array_equal(s, best_spot)]
+                boxes.pop(idx)
 
     return assignments
+
 
 # ------------------------ Main Flow ------------------------
 
