@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 def trapezoid_profile(target_position, total_time, dt):
     # Parameters
-    A_max = 1.54 # rad/s^2 it can reach to 1.57 radians in 1 second 
+    A_max = 90 # rad/s^2 it can reach to 1.57 radians in 1 second 
 
     # Calculate max velocity for given target and time
     T_acc = total_time / 2.0
@@ -50,17 +50,22 @@ def trapezoid_profile(target_position, total_time, dt):
 
     # Clamp final position to target
     pos = np.array(pos)
-    pos = pos - (pos[-1] - target_position)
+    # Offset both start and end to correct to [0, target_position]
+    start_offset = pos[0]
+    end_offset = pos[-1] - target_position
+    pos = pos - start_offset - end_offset * (np.linspace(0, 1, len(pos)))
+    # pos = pos - (pos[-1] - target_position)
 
     return time, pos, np.array(vel), np.array(acc)
 
 # Run and plot
 if __name__ == "__main__":
-    target_position = 3.00  # meters
+    target_position = 180  # meters
     total_time = 5.0      # seconds
-    dt = 0.001               # time resolution
+    dt = 0.02               # time resolution
 
     t, p, v, a = trapezoid_profile(target_position, total_time, dt)
+    print(p)
     # print(p)
     # Plotting
     plt.figure(figsize=(10, 6))
